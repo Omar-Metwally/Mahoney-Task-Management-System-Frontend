@@ -1,0 +1,49 @@
+<page-header />
+
+<app-generic-table
+  [data]="data()"
+  [columns]="columns"
+  [totalCount]="totalCount()"
+  [pageIndex]="pageIndex()"
+  [pageSize]="pageSize"
+  [isLoading]="isLoading()"
+  (view)="onView($event)"
+  (edit)="onEdit($event)"
+  (delete)="onDelete($event)"
+  (pageChange)="onPageChange($event)"
+  (sortChange)="onSortChange($event)"
+  (filtersApplied)="onApply()"
+  (filtersReset)="onReset()"
+  [showEdit]="can('employees:canEdit')"
+  [showDelete]="can('employees:canDelete')"
+  [showView]="false"
+>
+  <ng-template #toolbarActions>
+    <button *ngxPermissionsOnly="'employees:canAdd'" mat-flat-button color="primary" (click)="onAdd()">
+      <mat-icon>add</mat-icon> New Employee
+    </button>
+  </ng-template>
+
+  <ng-template #filterContent>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 16px; align-items: start;">
+
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Search</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [(ngModel)]="filters['searchTerm']" name="searchTerm" placeholder="Search employees..." />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 100%;" *ngxPermissionsOnly="'employees:canAdd'">
+        <mat-label>Department</mat-label>
+        <mat-select [(ngModel)]="filters['departmentId']" name="departmentId">
+          <mat-option [value]="null">All Departments</mat-option>
+          @for (dept of departments(); track dept.id) {
+            <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+    </div>
+  </ng-template>
+
+</app-generic-table>

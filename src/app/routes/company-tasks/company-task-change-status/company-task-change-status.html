@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>Change Status</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 360px;">
+  <p style="margin: 0 0 16px; color: var(--mat-sys-on-surface-variant); font-size: 13px;">
+    Current status: <strong>{{ currentStatusLabel }}</strong>
+  </p>
+
+  <mat-form-field appearance="outline" style="width: 100%;">
+    <mat-label>New Status</mat-label>
+    <mat-select [formControl]="statusControl">
+      @for (opt of statusOptions; track opt.value) {
+        <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px; gap: 8px;">
+  <button mat-button (click)="onCancel()" [disabled]="isSaving()">Cancel</button>
+  <button
+    mat-flat-button
+    color="primary"
+    (click)="onSubmit()"
+    [disabled]="statusControl.invalid || isSaving()"
+  >
+    @if (isSaving()) {
+      <mat-spinner diameter="18" style="margin-right: 8px;" />
+    }
+    Save
+  </button>
+</mat-dialog-actions>

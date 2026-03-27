@@ -1,0 +1,31 @@
+{
+  "menu": [
+    {
+      "route": "company-tasks",
+      "name": "company-tasks",
+      "type": "link",
+      "icon": "assignment"
+    },
+    {
+      "route": "employees",
+      "name": "employees",
+      "type": "link",
+      "icon": "people",
+      "permissions": {
+        "only": [
+          "Admin",
+          "Manager"
+        ]
+      }
+    },
+    {
+      "route": "departments",
+      "name": "departments",
+      "type": "link",
+      "icon": "business",
+      "permissions": {
+        "only": "Admin"
+      }
+    }
+  ]
+}

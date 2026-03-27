@@ -1,0 +1,41 @@
+<ng-template #toolbar>
+  <ng-container *ngTemplateOutlet="toolbarActions ?? null" />
+</ng-template>
+
+<div class="filter-toggle">
+  <button mat-button (click)="showFilters = !showFilters">
+    <mat-icon>{{ showFilters ? 'expand_less' : 'expand_more' }}</mat-icon>
+    Filters
+  </button>
+</div>
+
+@if (showFilters) {
+  <mat-card style="padding: 16px 20px; margin-bottom: 8px;">
+    <ng-container *ngTemplateOutlet="filterContent ?? null" />
+    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+      <button mat-flat-button color="primary" (click)="filtersApplied.emit()">Apply</button>
+      <button mat-button (click)="filtersReset.emit()">Reset</button>
+    </div>
+  </mat-card>
+}
+
+<mtx-grid
+  [data]="data"
+  [columns]="internalColumns"
+  [loading]="isLoading"
+  [rowHover]="true"
+  [rowStriped]="true"
+  [showToolbar]="true"
+  [columnHideable]="true"
+  [columnSortable]="true"
+  [columnPinnable]="true"
+  [showPaginator]="true"
+  [pageOnFront]="false"
+  [pageIndex]="pageIndex"
+  [pageSize]="pageSize"
+  [length]="totalCount"
+  [pageSizeOptions]="pageSizeOptions"
+  [toolbarTemplate]="toolbar"
+  (page)="onPageChange($event)"
+  (sortChange)="onSortChange($event)"
+/>

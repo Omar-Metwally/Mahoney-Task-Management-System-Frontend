@@ -1,0 +1,76 @@
+<page-header />
+
+<app-generic-table
+  [data]="data()"
+  [columns]="columns"
+  [totalCount]="totalCount()"
+  [pageIndex]="pageIndex()"
+  [pageSize]="pageSize"
+  [isLoading]="isLoading()"
+  [extraActions]="extraActions"
+  (view)="onView($event)"
+  (edit)="onEdit($event)"
+  (delete)="onDelete($event)"
+  (pageChange)="onPageChange($event)"
+  (sortChange)="onSortChange($event)"
+  (filtersApplied)="onApply()"
+  (filtersReset)="onReset()"
+  [showEdit]="can('tasks:canEdit')"
+  [showDelete]="can('tasks:canDelete')"
+>
+
+  <!-- ── Toolbar ───────────────────────────────────────────────────────────── -->
+  <ng-template #toolbarActions>
+    <button
+      *ngxPermissionsOnly="'tasks:canAdd'"
+      mat-flat-button
+      color="primary"
+      (click)="onAdd()"
+    >
+      <mat-icon>add</mat-icon> New Task
+    </button>
+  </ng-template>
+
+  <!-- ── Filters ───────────────────────────────────────────────────────────── -->
+  <ng-template #filterContent>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 16px; align-items: start;">
+
+      <!-- Importance -->
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Importance</mat-label>
+        <mat-select [(ngModel)]="filters.importance" name="importance">
+          <mat-option [value]="null">All</mat-option>
+          @for (opt of importanceOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Status -->
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="filters.status" name="status">
+          <mat-option [value]="null">All</mat-option>
+          @for (opt of statusOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Department (admin only) -->
+      @if (isAdmin) {
+        <mat-form-field appearance="outline" style="width: 100%;">
+          <mat-label>Department</mat-label>
+          <mat-select [(ngModel)]="filters.departmentId" name="departmentId">
+            <mat-option [value]="null">All</mat-option>
+            @for (dept of departments; track dept.id) {
+              <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+    </div>
+  </ng-template>
+
+</app-generic-table>

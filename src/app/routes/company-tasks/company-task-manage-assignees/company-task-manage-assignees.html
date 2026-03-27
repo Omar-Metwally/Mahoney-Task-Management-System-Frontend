@@ -1,0 +1,72 @@
+<h2 mat-dialog-title>Manage Assignees — {{ task.title }}</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 480px; max-height: 70vh;">
+
+  <!-- ── Search ──────────────────────────────────────────────────────────── -->
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 8px;">
+    <mat-label>Search employees</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Filter by name..." />
+  </mat-form-field>
+
+  <!-- ── Loading state ───────────────────────────────────────────────────── -->
+  @if (isLoadingAssignees() || isLoadingEmployees()) {
+    <div style="display: flex; justify-content: center; padding: 24px;">
+      <mat-spinner diameter="32" />
+    </div>
+  }
+
+  <!-- ── Employee list ───────────────────────────────────────────────────── -->
+  @if (!isLoadingAssignees() && !isLoadingEmployees()) {
+
+    @if (filteredEmployees().length === 0) {
+      <p style="color: var(--mat-sys-on-surface-variant); font-size: 13px; text-align: center; padding: 16px 0;">
+        No employees found in this department.
+      </p>
+    }
+
+    <mat-list>
+      @for (emp of filteredEmployees(); track emp.id) {
+        <mat-list-item style="border-radius: 8px; margin-bottom: 4px;">
+
+          <!-- Avatar initial -->
+          <div matListItemAvatar style="
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--mat-sys-primary-container);
+            color: var(--mat-sys-on-primary-container);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 500; flex-shrink: 0;">
+            {{ emp.fullName.charAt(0).toUpperCase() }}
+          </div>
+
+          <span matListItemTitle>{{ emp.fullName }}</span>
+
+          <!-- Assign / Unassign button -->
+          <div matListItemMeta>
+            @if (togglingEmployeeId() === emp.id) {
+              <mat-spinner diameter="20" />
+            } @else if (assigneeIds().has(emp.id)) {
+              <button mat-icon-button color="warn" (click)="toggle(emp)" matTooltip="Remove assignee">
+                <mat-icon>person_remove</mat-icon>
+              </button>
+            } @else {
+              <button mat-icon-button color="primary" (click)="toggle(emp)" matTooltip="Add assignee">
+                <mat-icon>person_add</mat-icon>
+              </button>
+            }
+          </div>
+
+        </mat-list-item>
+      }
+    </mat-list>
+
+  }
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px;">
+  <span style="flex: 1; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
+    {{ assignees().length }} assignee{{ assignees().length !== 1 ? 's' : '' }}
+  </span>
+  <button mat-flat-button (click)="onClose()">Done</button>
+</mat-dialog-actions>

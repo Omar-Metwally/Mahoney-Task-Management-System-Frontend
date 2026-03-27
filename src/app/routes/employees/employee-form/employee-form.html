@@ -1,0 +1,107 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 460px;">
+  <form [formGroup]="form" style="display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- First Name -->
+    <mat-form-field appearance="outline">
+      <mat-label>First Name</mat-label>
+      <input matInput formControlName="firstName" placeholder="e.g. John" />
+      @if (form.get('firstName')!.touched && firstNameError) {
+        <mat-error>{{ firstNameError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Last Name -->
+    <mat-form-field appearance="outline">
+      <mat-label>Last Name</mat-label>
+      <input matInput formControlName="lastName" placeholder="e.g. Doe" />
+      @if (form.get('lastName')!.touched && lastNameError) {
+        <mat-error>{{ lastNameError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Username (add only) -->
+    @if (!isEdit()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="username" placeholder="e.g. johndoe" />
+        @if (form.get('username')!.touched && usernameError) {
+          <mat-error>{{ usernameError }}</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <!-- Email -->
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" placeholder="e.g. john@example.com" type="email" />
+      @if (form.get('email')!.touched && emailError) {
+        <mat-error>{{ emailError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Password (add only) -->
+    @if (!isEdit()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput formControlName="password" [type]="showPassword() ? 'text' : 'password'" />
+        <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())">
+          <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        @if (form.get('password')!.touched && passwordError) {
+          <mat-error>{{ passwordError }}</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <!-- Department (add only) -->
+    @if (!isEdit()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Department</mat-label>
+        @if (isLoadingDepartments()) {
+          <mat-spinner matPrefix diameter="16" style="margin: 0 8px;" />
+        }
+        <mat-select formControlName="departmentId">
+          @for (dept of departments; track dept.id) {
+            <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+          }
+        </mat-select>
+        @if (form.get('departmentId')!.touched && departmentError) {
+          <mat-error>{{ departmentError }}</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <!-- Roles -->
+    <mat-form-field appearance="outline">
+      <mat-label>Role</mat-label>
+      <mat-select formControlName="role">
+        @for (role of availableRoles; track role) {
+          <mat-option [value]="role">{{ role }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('role')!.touched && rolesError) {
+        <mat-error>{{ rolesError }}</mat-error>
+      }
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px; gap: 8px;">
+  <button mat-button (click)="onCancel()" [disabled]="isSaving">
+    Cancel
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || isSaving()"
+  >
+    @if (isSaving()) {
+      <mat-spinner diameter="18" style="margin-right: 8px;" />
+    }
+    {{ isEdit() ? 'Save Changes' : 'Create' }}
+  </button>
+</mat-dialog-actions>

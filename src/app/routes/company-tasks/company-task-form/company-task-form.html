@@ -1,0 +1,71 @@
+<h2 mat-dialog-title>{{ dialogTitle }}</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 520px;">
+  <form [formGroup]="form" style="display: flex; flex-direction: column; gap: 12px;">
+
+    <mat-form-field appearance="outline">
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" placeholder="e.g. Migrate database to PostgreSQL" />
+      @if (form.get('title')!.touched && titleError) {
+        <mat-error>{{ titleError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="4" placeholder="Describe the task in detail..."></textarea>
+      @if (form.get('description')!.touched && descriptionError) {
+        <mat-error>{{ descriptionError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+      <mat-form-field appearance="outline">
+        <mat-label>Importance</mat-label>
+        <mat-select formControlName="importance">
+          @for (opt of importanceOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+        @if (form.get('importance')!.touched && importanceError) {
+          <mat-error>{{ importanceError }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Due Date</mat-label>
+        <input matInput [matDatepicker]="duePicker" formControlName="dueTime" placeholder="Optional" />
+        <mat-datepicker-toggle matSuffix [for]="duePicker" />
+        <mat-datepicker #duePicker />
+      </mat-form-field>
+
+    </div>
+
+    @if (isAdmin && !isEdit) {
+      <mat-form-field appearance="outline">
+        <mat-label>Department</mat-label>
+        @if (isLoadingDepartments) {
+          <mat-spinner matPrefix diameter="16" style="margin: 0 8px;" />
+        }
+        <mat-select formControlName="departmentId">
+          <mat-option [value]="null">No department</mat-option>
+          @for (dept of departments; track dept.id) {
+            <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px; gap: 8px;">
+  <button mat-button (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+  <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="form.invalid || isSaving">
+    @if (isSaving) {
+      <mat-spinner diameter="18" style="margin-right: 8px;" />
+    }
+    {{ isEdit ? 'Save Changes' : 'Create Task' }}
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,22 @@
+<mat-toolbar>
+  @if (showToggle()) {
+    <button matIconButton (click)="toggleSidenav.emit()">
+      <mat-icon>menu</mat-icon>
+    </button>
+  }
+
+  @if (showBranding()) {
+    <app-branding />
+  }
+
+  <span class="flex-fill"></span>
+
+  <app-theme-toggle />
+
+  <!-- <app-notification class="hide-small" /> -->
+
+  <button matIconButton (click)="logout()">
+    <mat-icon>logout</mat-icon>
+  </button>
+
+</mat-toolbar>

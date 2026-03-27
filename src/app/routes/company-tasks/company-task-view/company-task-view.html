@@ -1,0 +1,217 @@
+<h2 mat-dialog-title>Task Details</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 580px; max-height: 75vh; overflow-y: auto;">
+
+  <!-- ── Loading ─────────────────────────────────────────────────────────── -->
+  @if (isLoading()) {
+    <div style="display: flex; justify-content: center; padding: 32px;">
+      <mat-spinner diameter="36" />
+    </div>
+  }
+
+  @if (!isLoading() && !task()) {
+    <p style="color: var(--mat-sys-error);">Failed to load task details.</p>
+  }
+
+  @if (!isLoading() && task(); as task) {
+
+    <!-- ── Task header ──────────────────────────────────────────────────── -->
+    <div style="margin-bottom: 12px;">
+      <div style="font-size: 18px; font-weight: 500; margin-bottom: 4px;">{{ task.title }}</div>
+      <div style="font-size: 13px; color: var(--mat-sys-on-surface-variant);">{{ task.departmentName }}</div>
+    </div>
+
+    <!-- ── Chips ───────────────────────────────────────────────────────── -->
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+      <mat-chip>{{ importanceLabel() }}</mat-chip>
+      <mat-chip>{{ statusLabel() }}</mat-chip>
+      @if (task.isCompleted) {
+        <mat-chip color="primary" highlighted>Completed</mat-chip>
+      }
+    </div>
+
+    <!-- ── Description ─────────────────────────────────────────────────── -->
+    <p style="margin: 0 0 12px; line-height: 1.6; white-space: pre-wrap; font-size: 14px;">
+      {{ task.description }}
+    </p>
+
+    <!-- ── Due date ────────────────────────────────────────────────────── -->
+    @if (task.dueTime) {
+      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; color: var(--mat-sys-on-surface-variant);">
+        <mat-icon style="font-size: 16px; width: 16px; height: 16px;">schedule</mat-icon>
+        Due {{ task.dueTime | date: 'mediumDate' }}
+      </div>
+    }
+
+    <mat-divider style="margin-bottom: 16px;" />
+
+    <!-- ── Milestones header ────────────────────────────────────────────── -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <span style="font-weight: 500;">Milestones ({{ task.milestones.length }})</span>
+      <button
+        *ngxPermissionsOnly="'tasks:canAdd'"
+        mat-stroked-button
+        (click)="openAddForm()"
+        [disabled]="activeFormId() !== null"
+      >
+        <mat-icon>add</mat-icon> Add Milestone
+      </button>
+    </div>
+
+    <!-- ── Add form (shown at top when adding) ──────────────────────────── -->
+    @if (isAddingNew()) {
+      <div style="border: 1px solid var(--mat-sys-outline-variant); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+        <ng-container *ngTemplateOutlet="milestoneFormTpl" />
+      </div>
+    }
+
+    <!-- ── Milestone list ───────────────────────────────────────────────── -->
+    @if (task.milestones.length === 0 && !isAddingNew()) {
+      <p style="color: var(--mat-sys-on-surface-variant); font-size: 13px; text-align: center; padding: 16px 0;">
+        No milestones yet.
+      </p>
+    }
+
+    @for (milestone of task.milestones; track milestone.id) {
+
+      <!-- ── Edit form for this row ──────────────────────────────────────── -->
+      @if (activeFormId() === milestone.id) {
+        <div style="border: 1px solid var(--mat-sys-outline-variant); border-radius: 8px; padding: 16px; margin-bottom: 8px;">
+          <ng-container *ngTemplateOutlet="milestoneFormTpl" />
+        </div>
+      } @else {
+
+        <!-- ── Milestone row ───────────────────────────────────────────── -->
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--mat-sys-outline-variant);">
+
+          <!-- Status icon -->
+          <mat-icon [style.color]="milestoneIconColor(milestone)" style="margin-top: 2px; flex-shrink: 0;">
+            {{ milestoneIcon(milestone) }}
+          </mat-icon>
+
+          <!-- Content -->
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 14px; font-weight: 500;">{{ milestone.title }}</div>
+            <div style="font-size: 12px; color: var(--mat-sys-on-surface-variant); margin-top: 2px;">
+              {{ milestone.description }}
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; align-items: center;">
+
+              <!-- Status select -->
+              <mat-form-field appearance="outline" style="width: 140px;">
+                @if (changingStatusId() === milestone.id) {
+                  <mat-spinner matPrefix diameter="16" style="margin-right: 6px;" />
+                }
+
+                <mat-select
+                  [value]="milestone.status"
+                  (selectionChange)="onChangeMilestoneStatus(milestone, $event.value)"
+                  [disabled]="changingStatusId() === milestone.id"
+                >
+                  @for (opt of milestoneStatusOptions; track opt.value) {
+                    <mat-option [value]="opt.value">
+                      {{ opt.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (changingStatusId() === milestone.id) {
+                <mat-spinner diameter="14" />
+              }
+
+              @if (milestone.dueTime) {
+                <span style="font-size: 12px; color: var(--mat-sys-on-surface-variant);">
+                  Due {{ milestone.dueTime | date: 'mediumDate' }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display: flex; gap: 2px; flex-shrink: 0;" *ngxPermissionsOnly="'tasks:canEdit'">
+            <button
+              mat-icon-button
+              (click)="openEditForm(milestone)"
+              [disabled]="activeFormId() !== null || deletingId() !== null"
+              matTooltip="Edit"
+            >
+              <mat-icon style="font-size: 18px;">edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              color="warn"
+              (click)="onDeleteMilestone(milestone)"
+              [disabled]="deletingId() !== null || activeFormId() !== null"
+              matTooltip="Delete"
+            >
+              @if (deletingId() === milestone.id) {
+                <mat-spinner diameter="18" />
+              } @else {
+                <mat-icon style="font-size: 18px;">delete</mat-icon>
+              }
+            </button>
+          </div>
+
+        </div>
+      }
+    }
+  }
+
+</mat-dialog-content>
+
+<!-- ── Shared milestone form template ──────────────────────────────────────── -->
+<ng-template #milestoneFormTpl>
+  <form [formGroup]="milestoneForm" style="display: flex; flex-direction: column; gap: 10px;">
+
+    <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;">
+      {{ isAddingNew() ? 'New Milestone' : 'Edit Milestone' }}
+    </div>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" />
+      @if (milestoneForm.get('title')!.touched && titleError) {
+        <mat-error>{{ titleError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="3"></textarea>
+      @if (milestoneForm.get('description')!.touched && descriptionError) {
+        <mat-error>{{ descriptionError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Due Date</mat-label>
+      <input matInput [matDatepicker]="milestonePicker" formControlName="dueTime" placeholder="Optional" />
+      <mat-datepicker-toggle matSuffix [for]="milestonePicker" />
+      <mat-datepicker #milestonePicker />
+    </mat-form-field>
+
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button mat-button type="button" (click)="closeForm()" [disabled]="savingMilestone()">
+        Cancel
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="onSaveMilestone()"
+        [disabled]="milestoneForm.invalid || savingMilestone()"
+      >
+        @if (savingMilestone()) {
+          <mat-spinner diameter="18" style="margin-right: 8px;" />
+        }
+        {{ isAddingNew() ? 'Add' : 'Save' }}
+      </button>
+    </div>
+
+  </form>
+</ng-template>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px;">
+  <button mat-button (click)="onClose()">Close</button>
+</mat-dialog-actions>

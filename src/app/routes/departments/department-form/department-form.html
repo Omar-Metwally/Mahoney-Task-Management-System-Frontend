@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content style="padding: 16px 24px; min-width: 420px;">
+  <form [formGroup]="form" style="display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- Name -->
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" placeholder="e.g. Engineering" />
+      @if (form.get('name')!.touched && nameError) {
+        <mat-error>{{ nameError }}</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Manager -->
+    <mat-form-field appearance="outline" *ngIf="isEdit">
+      <mat-label>Manager</mat-label>
+      @if (isLoadingEmployees) {
+        <mat-spinner matPrefix diameter="16" style="margin: 0 8px;" />
+      }
+      <mat-select formControlName="managerId">
+        @for (emp of employees; track emp.id) {
+          <mat-option [value]="emp.id">{{ emp.fullName }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('managerId')!.touched && managerError) {
+        <mat-error>{{ managerError }}</mat-error>
+      }
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 8px 24px 16px; gap: 8px;">
+  <button mat-button (click)="onCancel()" [disabled]="isSaving">
+    Cancel
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || isSaving"
+  >
+    @if (isSaving) {
+      <mat-spinner diameter="18" style="margin-right: 8px;" />
+    }
+    {{ isEdit ? 'Save Changes' : 'Create' }}
+  </button>
+</mat-dialog-actions>
