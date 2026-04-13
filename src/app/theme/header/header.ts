@@ -26,8 +26,9 @@ import { Router } from '@angular/router';
     MatButtonModule,
     MatIconModule,
     Branding,
-    ThemeToggleComponent
-  ],
+    ThemeToggleComponent,
+    NotificationButton
+],
 })
 export class Header {
   readonly showToggle = input(true);

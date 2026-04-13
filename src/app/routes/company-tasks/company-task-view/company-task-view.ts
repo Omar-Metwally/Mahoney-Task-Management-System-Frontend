@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +22,8 @@ import {
   TASK_IMPORTANCE_OPTIONS,
   TASK_STATUS_OPTIONS,
 } from '../company-tasks.service';
+import { TaskHubService } from '@core';
+import { Subject, takeUntil, filter } from 'rxjs';
 
 export interface CompanyTaskViewDialogData {
   taskId: number;
@@ -30,9 +32,9 @@ export interface CompanyTaskViewDialogData {
 // ── Milestone status options ───────────────────────────────────────────────────
 
 const MILESTONE_STATUS_OPTIONS = [
-  { label: 'Pending',     value: MilestoneStatus.Pending    },
+  { label: 'Pending', value: MilestoneStatus.Pending },
   { label: 'In Progress', value: MilestoneStatus.InProgress },
-  { label: 'Completed',   value: MilestoneStatus.Completed  },
+  { label: 'Completed', value: MilestoneStatus.Completed },
 ];
 
 @Component({
@@ -55,50 +57,138 @@ const MILESTONE_STATUS_OPTIONS = [
     NgxPermissionsModule,
   ],
 })
-export class CompanyTaskView implements OnInit {
-  private readonly dialogRef   = inject(MatDialogRef<CompanyTaskView>);
-  private readonly data        = inject<CompanyTaskViewDialogData>(MAT_DIALOG_DATA);
+export class CompanyTaskView implements OnInit, OnDestroy {
+  private readonly dialogRef = inject(MatDialogRef<CompanyTaskView>);
+  private readonly data = inject<CompanyTaskViewDialogData>(MAT_DIALOG_DATA);
   private readonly taskService = inject(CompanyTaskService);
+  private readonly taskHub = inject(TaskHubService);
+  private readonly destroy$ = new Subject<void>();
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  isLoading       = signal(true);
-  task            = signal<CompanyTaskDetailDto | null>(null);
+  isLoading = signal(true);
+  task = signal<CompanyTaskDetailDto | null>(null);
   savingMilestone = signal(false);
-  deletingId      = signal<number | null>(null);
+  deletingId = signal<number | null>(null);
   changingStatusId = signal<number | null>(null);
 
   /** null = form closed, -1 = adding new, N = editing milestone with id N */
   activeFormId = signal<number | null>(null);
 
-  readonly importanceOptions       = TASK_IMPORTANCE_OPTIONS;
-  readonly statusOptions           = TASK_STATUS_OPTIONS;
-  readonly milestoneStatusOptions  = MILESTONE_STATUS_OPTIONS;
+  readonly importanceOptions = TASK_IMPORTANCE_OPTIONS;
+  readonly statusOptions = TASK_STATUS_OPTIONS;
+  readonly milestoneStatusOptions = MILESTONE_STATUS_OPTIONS;
 
   // ── Milestone form ────────────────────────────────────────────────────────
 
   milestoneForm = new FormGroup({
-    title:       new FormControl<string>('',   [Validators.required, Validators.maxLength(200)]),
-    description: new FormControl<string>('',   [Validators.required, Validators.maxLength(2000)]),
-    dueTime:     new FormControl<string | null>(null),
+    title: new FormControl<string>('', [Validators.required, Validators.maxLength(200)]),
+    description: new FormControl<string>('', [Validators.required, Validators.maxLength(2000)]),
+    dueTime: new FormControl<string | null>(null),
   });
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
   isAddingNew = computed(() => this.activeFormId() === -1);
 
-  importanceLabel = computed(() =>
-    this.importanceOptions.find(o => o.value === this.task()?.importance)?.label ?? ''
+  importanceLabel = computed(
+    () => this.importanceOptions.find(o => o.value === this.task()?.importance)?.label ?? ''
   );
 
-  statusLabel = computed(() =>
-    this.statusOptions.find(o => o.value === this.task()?.status)?.label ?? ''
+  statusLabel = computed(
+    () => this.statusOptions.find(o => o.value === this.task()?.status)?.label ?? ''
   );
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.loadTask();
+
+    const myTaskId = this.data.taskId;
+
+    // Reload whole task if its core fields change
+    this.taskHub.taskUpdated$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(() => this.loadTask());
+
+    this.taskHub.taskStatusChanged$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(() => this.loadTask());
+
+    // Patch milestones in-place to avoid full reload flicker
+    this.taskHub.milestoneAdded$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(() => this.loadTask());
+
+    this.taskHub.milestoneUpdated$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(() => this.loadTask());
+
+    this.taskHub.milestoneDeleted$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(p =>
+        this.task.update(t =>
+          t ? { ...t, milestones: t.milestones.filter(m => m.id !== p.milestoneId) } : t
+        )
+      );
+
+    this.taskHub.milestoneCompleted$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(p =>
+        this.task.update(t =>
+          t
+            ? {
+                ...t,
+                milestones: t.milestones.map(m =>
+                  m.id === p.milestoneId ? { ...m, isCompleted: true, status: 2 } : m
+                ),
+              }
+            : t
+        )
+      );
+
+    this.taskHub.milestoneStatusChanged$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(p => p.taskId === myTaskId)
+      )
+      .subscribe(p =>
+        this.task.update(t =>
+          t
+            ? {
+                ...t,
+                milestones: t.milestones.map(m =>
+                  m.id === p.milestoneId
+                    ? { ...m, status: p.newStatus as any, isCompleted: p.newStatus === 'Completed' }
+                    : m
+                ),
+              }
+            : t
+        )
+      );
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private loadTask(): void {
@@ -123,9 +213,9 @@ export class CompanyTaskView implements OnInit {
 
   openEditForm(milestone: CompanyTaskMilestoneDto): void {
     this.milestoneForm.patchValue({
-      title:       String(milestone.title),
+      title: String(milestone.title),
       description: milestone.description,
-      dueTime:     milestone.dueTime,
+      dueTime: milestone.dueTime,
     });
     this.activeFormId.set(milestone.id);
   }
@@ -145,17 +235,18 @@ export class CompanyTaskView implements OnInit {
     const taskId = this.data.taskId;
     const formId = this.activeFormId();
 
-    const request$ = formId === -1
-      ? this.taskService.addMilestone(taskId, {
-          title:       title!,
-          description: description!,
-          dueTime:     dueTime ?? null,
-        })
-      : this.taskService.editMilestone(taskId, formId!, {
-          title:       title ?? undefined,
-          description: description ?? undefined,
-          dueTime:     dueTime ?? undefined,
-        });
+    const request$ =
+      formId === -1
+        ? this.taskService.addMilestone(taskId, {
+            title: title!,
+            description: description!,
+            dueTime: dueTime ?? null,
+          })
+        : this.taskService.editMilestone(taskId, formId!, {
+            title: title ?? undefined,
+            description: description ?? undefined,
+            dueTime: dueTime ?? undefined,
+          });
 
     request$.subscribe({
       next: result => {
@@ -176,9 +267,8 @@ export class CompanyTaskView implements OnInit {
     this.taskService.deleteMilestone(this.data.taskId, milestone.id).subscribe({
       next: result => {
         if (result.isSuccess) {
-          this.task.update(t => t
-            ? { ...t, milestones: t.milestones.filter(m => m.id !== milestone.id) }
-            : t
+          this.task.update(t =>
+            t ? { ...t, milestones: t.milestones.filter(m => m.id !== milestone.id) } : t
           );
         }
         this.deletingId.set(null);
@@ -194,12 +284,18 @@ export class CompanyTaskView implements OnInit {
     this.taskService.changeMilestoneStatus(this.data.taskId, milestone.id, status).subscribe({
       next: result => {
         if (result.isSuccess) {
-          this.task.update(t => t ? {
-            ...t,
-            milestones: t.milestones.map(m =>
-              m.id === milestone.id ? { ...m, status, isCompleted: status === MilestoneStatus.Completed } : m
-            ),
-          } : t);
+          this.task.update(t =>
+            t
+              ? {
+                  ...t,
+                  milestones: t.milestones.map(m =>
+                    m.id === milestone.id
+                      ? { ...m, status, isCompleted: status === MilestoneStatus.Completed }
+                      : m
+                  ),
+                }
+              : t
+          );
         }
         this.changingStatusId.set(null);
       },
@@ -214,14 +310,14 @@ export class CompanyTaskView implements OnInit {
   }
 
   milestoneIcon(milestone: CompanyTaskMilestoneDto): string {
-    if (milestone.isCompleted)                            return 'check_circle';
-    if (milestone.status === MilestoneStatus.InProgress)  return 'pending';
+    if (milestone.isCompleted) return 'check_circle';
+    if (milestone.status === MilestoneStatus.InProgress) return 'pending';
     return 'radio_button_unchecked';
   }
 
   milestoneIconColor(milestone: CompanyTaskMilestoneDto): string {
-    if (milestone.isCompleted)                            return 'var(--mat-sys-primary)';
-    if (milestone.status === MilestoneStatus.InProgress)  return 'var(--mat-sys-tertiary)';
+    if (milestone.isCompleted) return 'var(--mat-sys-primary)';
+    if (milestone.status === MilestoneStatus.InProgress) return 'var(--mat-sys-tertiary)';
     return 'var(--mat-sys-on-surface-variant)';
   }
 
@@ -229,14 +325,14 @@ export class CompanyTaskView implements OnInit {
 
   get titleError(): string {
     const c = this.milestoneForm.get('title')!;
-    if (c.hasError('required'))  return 'Title is required.';
+    if (c.hasError('required')) return 'Title is required.';
     if (c.hasError('maxlength')) return 'Title cannot exceed 200 characters.';
     return '';
   }
 
   get descriptionError(): string {
     const c = this.milestoneForm.get('description')!;
-    if (c.hasError('required'))  return 'Description is required.';
+    if (c.hasError('required')) return 'Description is required.';
     if (c.hasError('maxlength')) return 'Description cannot exceed 2000 characters.';
     return '';
   }

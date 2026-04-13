@@ -34,6 +34,8 @@ import { CompanyTaskView } from '../company-task-view/company-task-view';
 import { CompanyTaskChangeStatus } from '../company-task-change-status/company-task-change-status';
 import { CompanyTaskManageAssignees } from '../company-task-manage-assignees/company-task-manage-assignees';
 import { PageHeader } from '@shared';
+import { TaskHubService } from '@core';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-company-tasks-table',
@@ -58,6 +60,8 @@ export class CompanyTasksTable implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly authService = inject(AuthService);
   private readonly permissionsService = inject(NgxPermissionsService);
+  private readonly taskHub = inject(TaskHubService);
+  private readonly destroy$ = new Subject<void>();
 
   // ── Table state ───────────────────────────────────────────────────────────
 
@@ -125,13 +129,13 @@ export class CompanyTasksTable implements OnInit {
       icon: 'swap_horiz',
       tooltip: 'Change Status',
       click: row => this.onChangeStatus(row),
-      show: this.can("task:edit")
+      show: this.can('task:edit'),
     },
     {
       icon: 'group',
       tooltip: 'Manage Assignees',
       click: row => this.onManageAssignees(row),
-      show: this.can("task:edit")
+      show: this.can('task:edit'),
     },
   ];
 
@@ -143,6 +147,17 @@ export class CompanyTasksTable implements OnInit {
       if (this.isAdmin) this.loadDepartments();
     });
     this.load();
+    this.taskHub.taskCreated$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+    this.taskHub.taskUpdated$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+    this.taskHub.taskDeleted$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+    this.taskHub.taskStatusChanged$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+    this.taskHub.employeeAssigned$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+    this.taskHub.employeeUnassigned$.pipe(takeUntil(this.destroy$)).subscribe(() => this.load());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // ── Data fetching ─────────────────────────────────────────────────────────

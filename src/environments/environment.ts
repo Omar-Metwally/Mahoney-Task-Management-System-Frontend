@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  baseUrl: 'https://task.runasp.net',
+  baseUrl: 'http://localhost:5294',
   useHash: false,
 };
 

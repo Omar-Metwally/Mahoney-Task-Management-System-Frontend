@@ -1,13 +1,13 @@
 import { BidiModule } from '@angular/cdk/bidi';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, OnDestroy, ViewEncapsulation, inject, viewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject, viewChild } from '@angular/core';
 import { MatSidenav, MatSidenavContent, MatSidenavModule } from '@angular/material/sidenav';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NgProgressbar } from 'ngx-progressbar';
 import { NgProgressRouter } from 'ngx-progressbar/router';
 import { Subscription, filter } from 'rxjs';
 
-import { AppSettings, SettingsService } from '@core';
+import { AppSettings, SettingsService, TaskHubService } from '@core';
 import { Customizer } from '../customizer/customizer';
 import { Header } from '../header/header';
 import { SidebarNotice } from '../sidebar-notice/sidebar-notice';
@@ -31,16 +31,17 @@ const MONITOR_MEDIAQUERY = 'screen and (min-width: 600px)';
     Header,
     Topmenu,
     Sidebar,
-    SidebarNotice
+    SidebarNotice,
   ],
 })
-export class AdminLayout implements OnDestroy {
+export class AdminLayout implements OnDestroy, OnInit {
   readonly sidenav = viewChild.required<MatSidenav>('sidenav');
   readonly content = viewChild.required<MatSidenavContent>('content');
 
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly router = inject(Router);
   private readonly settings = inject(SettingsService);
+  private readonly taskHub = inject(TaskHubService);
 
   options = this.settings.options;
 
@@ -73,6 +74,10 @@ export class AdminLayout implements OnDestroy {
       }
       this.content().scrollTo({ top: 0 });
     });
+  }
+
+  ngOnInit(): void {
+    this.taskHub.startConnection();
   }
 
   ngOnDestroy() {
